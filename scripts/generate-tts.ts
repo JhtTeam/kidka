@@ -52,13 +52,14 @@ loadDotEnv();
 type Provider = 'elevenlabs' | 'gemini';
 const PROVIDER = (process.env.TTS_PROVIDER as Provider) || 'elevenlabs';
 
-// ElevenLabs config
-// Voice IDs from ElevenLabs preset library:
-//   Bella  EXAVITQu4vr4xnSDxMaL  young female, warm — default for this app
-//   Rachel 21m00Tcm4TlvDq8ikWAM  calm female
-//   Elli   MF3mGyEYCl7XYWbV9V6O  young female, soft
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
-const ELEVENLABS_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
+// ElevenLabs config — currently on v3 (`eleven_v3`).
+// v3 differs from v2 in two important ways:
+//   - voice_settings has no usable `speed` slider; pacing is controlled via
+//     inline audio tags like [slows down], [deliberate], [pause] in the text.
+//   - stability is best at 0.5 (Natural); 0.0 (Creative) gives strongest tag
+//     adherence but more variability, 1.0 (Robust) ignores tags more.
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'LEnmbrrxYsUYS7vsRRwD';
+const ELEVENLABS_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_v3';
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 
 // Gemini config
@@ -222,40 +223,42 @@ async function fetchGeminiPcm(text: string, styleKey: Phrase['style']): Promise<
   return Buffer.from(b64, 'base64');
 }
 
-// ElevenLabs voice_settings tuned for child-friendly narration:
-//   stability 0.5 keeps a consistent delivery without being monotonous
-//   similarity_boost 0.75 holds the preset voice's character
-//   style 0.3 adds a touch of expressiveness for cheers/encouragement
-//   speed varies per phrase style — slower for teaching, normal for cheers.
-//   ElevenLabs accepts speed in the range 0.7–1.2 (default 1.0).
-const ELEVENLABS_SPEED_BY_STYLE: Record<Phrase['style'], number> = {
-  letter: 0.7,    // single letter — read very slowly and clearly
-  word: 0.75,      // single word — slow enough for a child to repeat
-  learn: 0.7,      // "A. Apple." — slow with the natural pause in between
-  trace: 0.75,    // gentle guidance while tracing
-  story: 0.8,      // short story narration — slightly slower than normal
-  cheer: 0.95,      // cheers stay lively
-  encourage: 0.85, // encouraging lines — calm but not draggy
+// ElevenLabs v3 audio tags prepended per style to shape delivery.
+// Tuned for a 4–5 year old just starting the alphabet — bias slow / clear / warm.
+// v2's `speed` slider is gone in v3; pacing comes from tags like
+// [slows down], [deliberate], [pause]. Tag reference:
+// https://elevenlabs.io/blog/eleven-v3-audio-tags-precision-delivery-control-for-ai-speech
+const ELEVENLABS_TAGS_BY_STYLE: Record<Phrase['style'], string> = {
+  letter: '[slows down][deliberate]',          // single letter — slow + crisp
+  word: '[deliberate]',                        // single word — clear pronunciation
+  learn: '[slows down][deliberate][warm]',     // "A. [pause] Apple." teaching line
+  trace: '[warm and gentle][slows down]',      // calm guidance while tracing
+  story: '[childlike tone][warm][slows down]', // short narration to a young child
+  cheer: '[happily][excited]',                 // lively cheer
+  encourage: '[warm and gentle]',              // calm reassurance
 };
 
-function elevenLabsVoiceSettings(style: Phrase['style']) {
-  return {
-    stability: 0.5,
-    similarity_boost: 0.75,
-    style: 0.3,
-    use_speaker_boost: true,
-    speed: ELEVENLABS_SPEED_BY_STYLE[style],
-  };
+function elevenLabsInput(text: string, style: Phrase['style']): string {
+  const tags = ELEVENLABS_TAGS_BY_STYLE[style];
+  // For the "A. Apple." teaching line, insert a [pause] between letter and
+  // word so v3 holds the gap deliberately instead of running them together.
+  const shaped = style === 'learn' ? text.replace('. ', '. [pause] ') : text;
+  return `${tags} ${shaped}`;
 }
 
 async function fetchElevenLabsMp3(text: string, style: Phrase['style']): Promise<Buffer> {
-  // We send the raw phrase; the Bella/Rachel presets already sound warm for
-  // a child audience, so no style-prefix prompting is necessary.
+  // v3 voice_settings: keep it minimal. stability 0.5 (Natural) balances
+  // tag adherence and consistency. `style`, `use_speaker_boost`, and `speed`
+  // are v2-era controls — omitted on v3 because they're either unsupported
+  // or unreliable.
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`;
   const body = {
-    text,
+    text: elevenLabsInput(text, style),
     model_id: ELEVENLABS_MODEL,
-    voice_settings: elevenLabsVoiceSettings(style),
+    voice_settings: {
+      stability: 0.5,
+      similarity_boost: 0.75,
+    },
   };
   const res = await withRetry(
     () =>

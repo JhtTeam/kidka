@@ -107,10 +107,13 @@ cp .env.example .env
 npm run generate-audio
 ```
 
-Default voice: Bella (`EXAVITQu4vr4xnSDxMaL` — young, warm female). Override:
+Default model: `eleven_v3` with voice `LEnmbrrxYsUYS7vsRRwD`. v3 doesn't use a
+speed slider — pacing is controlled by inline audio tags (`[slows down]`,
+`[pause]`, `[happily]`, …) that the script prepends per style. Override the
+voice by copying the `voiceId` query param from any voice-library URL:
 
 ```bash
-ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM npm run generate-audio   # Rachel
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM npm run generate-audio
 ```
 
 ElevenLabs free tier: 10k characters / month (≈ enough for a fresh run). If
@@ -135,8 +138,8 @@ days of drip-feeding on free tier.
 | `TTS_PROVIDER` | `elevenlabs` (default) or `gemini` |
 | `TTS_RPM` | Override rate limit (default 20 for ElevenLabs, 3 for Gemini) |
 | `TTS_LIMIT` | Generate only the first N phrases — handy for smoke tests |
-| `ELEVENLABS_VOICE_ID` | Override the default Bella voice |
-| `ELEVENLABS_MODEL` | Default `eleven_multilingual_v2` |
+| `ELEVENLABS_VOICE_ID` | Override the default voice (`LEnmbrrxYsUYS7vsRRwD`) |
+| `ELEVENLABS_MODEL` | Default `eleven_v3` (set to `eleven_multilingual_v2` for the v2 + speed-slider path) |
 
 ## Accessibility
 
