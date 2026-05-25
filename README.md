@@ -19,7 +19,7 @@ Built with **React + Vite + TypeScript + TailwindCSS + Framer Motion + Howler.js
 
 Other goodies:
 - 🌙 Dark mode toggle for parents
-- 🔊 Pronunciation via the browser's `speechSynthesis` API (no audio files to host)
+- 🔊 Pronunciation via pre-generated Gemini TTS audio (with `speechSynthesis` fallback)
 - 🎉 Confetti, floating shapes, gradient backgrounds, smooth Framer Motion transitions
 - 💾 Progress saved automatically to `localStorage`
 - 📱 Mobile / tablet first, large rounded buttons, child-safe minimal text
@@ -74,12 +74,32 @@ emojis or colors.
 
 ## Notes on audio
 
-The app uses the browser's built-in `speechSynthesis` API to pronounce letters
-and give encouraging voice feedback ("Great job!", "Try again!"). UI clicks and
-celebration chimes are synthesized with `AudioContext` at runtime so there are
-**no external audio files to ship**. If you'd like richer voice/sound effects,
-drop MP3/WAV files into `src/assets/` and wire them up in
-[src/utils/audio.ts](src/utils/audio.ts) using Howler.
+Letter names, words, encouragement and story narration are spoken from
+pre-generated MP3 files (`public/audio/*.mp3`) created with Google's Gemini TTS
+(voice: Kore). [src/utils/audio.ts](src/utils/audio.ts) loads
+`public/audio/manifest.json` at startup and plays the matching clip via
+Howler.js; phrases not in the manifest fall back to the browser's
+`speechSynthesis` API. UI clicks and celebration chimes are still synthesized
+on the fly with `AudioContext`.
+
+### Regenerating audio
+
+Whenever you edit [src/data/alphabet.ts](src/data/alphabet.ts) (new word, new
+hint) or change the story / encouragement phrases in
+[src/utils/audio.ts](src/utils/audio.ts) and
+[src/pages/Story.tsx](src/pages/Story.tsx), regenerate the audio pack:
+
+```bash
+export GEMINI_API_KEY=your_key_here
+npm run generate-audio
+```
+
+The script ([scripts/generate-tts.ts](scripts/generate-tts.ts)) is idempotent —
+phrases already in `public/audio/manifest.json` with a matching file on disk
+are skipped, so re-running only generates the new ones. To switch voice, edit
+the `VOICE` constant in the script (options: `Kore`, `Aoede`, `Puck`, `Leda`,
+and others — see Google's [Gemini speech generation
+docs](https://ai.google.dev/gemini-api/docs/speech-generation)).
 
 ## Accessibility
 
