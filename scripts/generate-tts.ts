@@ -1,6 +1,5 @@
 import { spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ffmpegPath from 'ffmpeg-static';
@@ -47,30 +46,41 @@ const STYLE = {
   encourage: 'Say warmly and kindly, like encouraging a young child to try again:',
 };
 
-type Phrase = { text: string; style: keyof typeof STYLE };
+type Phrase = { text: string; style: keyof typeof STYLE; name: string };
+
+const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
 // Build the full phrase list from the alphabet data + static UI lines.
 // Keep this in sync with src/utils/audio.ts speak() call sites.
+// `name` becomes the MP3 filename — keep it short and human-readable.
 function buildPhrases(): Phrase[] {
   const phrases: Phrase[] = [];
-  const add = (text: string, style: Phrase['style']) =>
-    phrases.push({ text, style });
+  const add = (text: string, style: Phrase['style'], name: string) =>
+    phrases.push({ text, style, name });
 
   // Static UI lines
-  add("Let's go!", 'cheer');
+  add("Let's go!", 'cheer', 'lets-go');
 
   // Cheer + encourage lines (must match ENCOURAGE/TRY_AGAIN in audio.ts)
-  ['Great job!', 'Awesome!', 'You did it!', 'Fantastic!', 'Well done!'].forEach(
-    (t) => add(t, 'cheer'),
+  ['Great job!', 'Awesome!', 'You did it!', 'Fantastic!', 'Well done!'].forEach((t) =>
+    add(t, 'cheer', `cheer-${slugify(t)}`),
   );
-  ['Try again!', 'Almost there!', 'You can do it!'].forEach((t) => add(t, 'encourage'));
+  ['Try again!', 'Almost there!', 'You can do it!'].forEach((t) =>
+    add(t, 'encourage', `encourage-${slugify(t)}`),
+  );
 
   // Per-letter lines
   for (const entry of ALPHABET) {
-    add(entry.letter, 'letter');
-    add(entry.word, 'word');
-    add(`${entry.letter}. ${entry.word}.`, 'learn');
-    add(`Trace the letter ${entry.letter}`, 'trace');
+    const L = entry.letter; // single uppercase letter, safe in filenames
+    add(entry.letter, 'letter', `letter-${L}`);
+    add(entry.word, 'word', `word-${L}`);
+    add(`${entry.letter}. ${entry.word}.`, 'learn', `learn-${L}`);
+    add(`Trace the letter ${entry.letter}`, 'trace', `trace-${L}`);
 
     // Story script: matches the template in src/pages/Story.tsx
     const intros = [
@@ -78,17 +88,16 @@ function buildPhrases(): Phrase[] {
       `Here comes the letter ${entry.letter}!`,
       `Look! It's the letter ${entry.letter}.`,
     ];
-    for (const intro of intros) {
-      add(`${intro} ${entry.letter} is for ${entry.word}. ${entry.hint}.`, 'story');
-    }
+    intros.forEach((intro, i) => {
+      add(
+        `${intro} ${entry.letter} is for ${entry.word}. ${entry.hint}.`,
+        'story',
+        `story-${L}-${i + 1}`,
+      );
+    });
   }
 
   return phrases;
-}
-
-function fileNameFor(text: string): string {
-  const hash = createHash('sha1').update(text).digest('hex').slice(0, 10);
-  return `${hash}.mp3`;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -178,20 +187,49 @@ async function loadExistingManifest(): Promise<Record<string, string>> {
   }
 }
 
+async function migrateExistingNames(
+  phrases: Phrase[],
+  existing: Record<string, string>,
+): Promise<Record<string, string>> {
+  // If the manifest references a file with the old naming scheme (or any name
+  // other than the current `name.mp3`), rename the file on disk so we don't
+  // re-spend quota regenerating audio we already have.
+  const updated: Record<string, string> = { ...existing };
+  const phraseByText = new Map(phrases.map((p) => [p.text, p]));
+  for (const [text, oldRel] of Object.entries(existing)) {
+    const phrase = phraseByText.get(text);
+    if (!phrase) continue;
+    const newRel = `audio/${phrase.name}.mp3`;
+    if (oldRel === newRel) continue;
+    const oldPath = resolve(OUT_DIR, oldRel.replace(/^audio\//, ''));
+    const newPath = resolve(OUT_DIR, `${phrase.name}.mp3`);
+    try {
+      await rename(oldPath, newPath);
+      updated[text] = newRel;
+      console.log(`renamed: ${oldRel} → ${newRel}`);
+    } catch {
+      // Source missing — let the main loop regenerate it.
+    }
+  }
+  return updated;
+}
+
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
   const phrases = buildPhrases().slice(0, LIMIT);
-  const existing = await loadExistingManifest();
+  let existing = await loadExistingManifest();
+  existing = await migrateExistingNames(phrases, existing);
   const manifest: Record<string, string> = { ...existing };
+  await writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n');
 
   console.log(
     `Generating ${phrases.length} phrases → ${OUT_DIR} (rate limit: ${RPM} rpm)`,
   );
   let i = 0;
   let lastCallAt = 0;
-  for (const { text, style } of phrases) {
+  for (const { text, style, name } of phrases) {
     i++;
-    const file = fileNameFor(text);
+    const file = `${name}.mp3`;
     const outPath = resolve(OUT_DIR, file);
     const relPath = `audio/${file}`;
 
