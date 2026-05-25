@@ -19,7 +19,7 @@ Built with **React + Vite + TypeScript + TailwindCSS + Framer Motion + Howler.js
 
 Other goodies:
 - 🌙 Dark mode toggle for parents
-- 🔊 Pronunciation via pre-generated Gemini TTS audio (with `speechSynthesis` fallback)
+- 🔊 Pronunciation via pre-generated TTS audio (ElevenLabs / Gemini, with `speechSynthesis` fallback)
 - 🎉 Confetti, floating shapes, gradient backgrounds, smooth Framer Motion transitions
 - 💾 Progress saved automatically to `localStorage`
 - 📱 Mobile / tablet first, large rounded buttons, child-safe minimal text
@@ -75,8 +75,8 @@ emojis or colors.
 ## Notes on audio
 
 Letter names, words, encouragement and story narration are spoken from
-pre-generated MP3 files (`public/audio/*.mp3`) created with Google's Gemini TTS
-(voice: Kore). [src/utils/audio.ts](src/utils/audio.ts) loads
+pre-generated MP3 files in `public/audio/`.
+[src/utils/audio.ts](src/utils/audio.ts) loads
 `public/audio/manifest.json` at startup and plays the matching clip via
 Howler.js; phrases not in the manifest fall back to the browser's
 `speechSynthesis` API. UI clicks and celebration chimes are still synthesized
@@ -84,22 +84,59 @@ on the fly with `AudioContext`.
 
 ### Regenerating audio
 
-Whenever you edit [src/data/alphabet.ts](src/data/alphabet.ts) (new word, new
-hint) or change the story / encouragement phrases in
-[src/utils/audio.ts](src/utils/audio.ts) and
-[src/pages/Story.tsx](src/pages/Story.tsx), regenerate the audio pack:
+The generator script [scripts/generate-tts.ts](scripts/generate-tts.ts) speaks
+to **two providers** so you can keep building the pack when one runs out of
+quota — phrases already present in `public/audio/manifest.json` are skipped, so
+a re-run only fills the gaps.
+
+**Set up your keys**
+
+Copy `.env.example` to `.env` and fill in whichever provider key(s) you have.
+The script auto-loads `.env` (real exported env vars still win), so you don't
+need to re-export every shell. `.env` is gitignored; `.env.example` is checked
+in.
 
 ```bash
-export GEMINI_API_KEY=your_key_here
+cp .env.example .env
+# then edit .env and paste your ELEVENLABS_API_KEY / GEMINI_API_KEY
+```
+
+**ElevenLabs (default — no daily limit)**
+
+```bash
 npm run generate-audio
 ```
 
-The script ([scripts/generate-tts.ts](scripts/generate-tts.ts)) is idempotent —
-phrases already in `public/audio/manifest.json` with a matching file on disk
-are skipped, so re-running only generates the new ones. To switch voice, edit
-the `VOICE` constant in the script (options: `Kore`, `Aoede`, `Puck`, `Leda`,
-and others — see Google's [Gemini speech generation
-docs](https://ai.google.dev/gemini-api/docs/speech-generation)).
+Default voice: Bella (`EXAVITQu4vr4xnSDxMaL` — young, warm female). Override:
+
+```bash
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM npm run generate-audio   # Rachel
+```
+
+ElevenLabs free tier: 10k characters / month (≈ enough for a fresh run). If
+you'll be tweaking phrases often, a paid Starter plan ($5/mo, 30k chars) is
+plenty.
+
+**Gemini TTS (alternate — voice: Kore)**
+
+```bash
+TTS_PROVIDER=gemini npm run generate-audio
+```
+
+Heads-up: free tier caps at **10 requests per day** + 3 RPM for
+`gemini-2.5-flash-tts`. The full phrase list (≈ 191) requires a paid plan
+(`TTS_PROVIDER=gemini TTS_RPM=60 npm run generate-audio` ≈ 4 minutes) or many
+days of drip-feeding on free tier.
+
+**Useful env vars**
+
+| Var | Purpose |
+| --- | --- |
+| `TTS_PROVIDER` | `elevenlabs` (default) or `gemini` |
+| `TTS_RPM` | Override rate limit (default 20 for ElevenLabs, 3 for Gemini) |
+| `TTS_LIMIT` | Generate only the first N phrases — handy for smoke tests |
+| `ELEVENLABS_VOICE_ID` | Override the default Bella voice |
+| `ELEVENLABS_MODEL` | Default `eleven_multilingual_v2` |
 
 ## Accessibility
 

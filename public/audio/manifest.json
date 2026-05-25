@@ -13,5 +13,17 @@
   "A. Apple.": "audio/learn-A.mp3",
   "Trace the letter A": "audio/trace-A.mp3",
   "Today we will learn the letter A! A is for Apple. A looks like a mountain.": "audio/story-A-1.mp3",
-  "Here comes the letter A! A is for Apple. A looks like a mountain.": "audio/story-A-2.mp3"
+  "Here comes the letter A! A is for Apple. A looks like a mountain.": "audio/story-A-2.mp3",
+  "Look! It's the letter A. A is for Apple. A looks like a mountain.": "audio/story-A-3.mp3",
+  "B": "audio/letter-B.mp3",
+  "Butterfly": "audio/word-B.mp3",
+  "B. Butterfly.": "audio/learn-B.mp3",
+  "Trace the letter B": "audio/trace-B.mp3",
+  "Today we will learn the letter B! B is for Butterfly. B looks like two glasses.": "audio/story-B-1.mp3",
+  "Here comes the letter B! B is for Butterfly. B looks like two glasses.": "audio/story-B-2.mp3",
+  "Look! It's the letter B. B is for Butterfly. B looks like two glasses.": "audio/story-B-3.mp3",
+  "C": "audio/letter-C.mp3",
+  "Cookie": "audio/word-C.mp3",
+  "C. Cookie.": "audio/learn-C.mp3",
+  "Trace the letter C": "audio/trace-C.mp3"
 }

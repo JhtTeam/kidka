@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,23 +11,85 @@ const ROOT = resolve(HERE, '..');
 const OUT_DIR = resolve(ROOT, 'public/audio');
 const MANIFEST_PATH = resolve(OUT_DIR, 'manifest.json');
 
-const MODEL = 'gemini-2.5-flash-preview-tts';
-const VOICE = 'Kore';
-const API_KEY = process.env.GEMINI_API_KEY;
-// Free tier allows 3 RPM for the TTS model. Override with GEMINI_TTS_RPM if you
-// have a paid plan (e.g. `GEMINI_TTS_RPM=60 npm run generate-audio`).
-const RPM = Number(process.env.GEMINI_TTS_RPM ?? '3');
-const MIN_INTERVAL_MS = Math.ceil(60_000 / RPM) + 500; // small safety margin
-const MAX_RETRIES = 5;
-// Set GEMINI_TTS_LIMIT=N to only generate the first N phrases (handy for smoke tests).
-const LIMIT = process.env.GEMINI_TTS_LIMIT ? Number(process.env.GEMINI_TTS_LIMIT) : Infinity;
+// Load .env from project root (KEY=value lines, # comments, optional quotes).
+// Values in .env OVERRIDE existing shell env vars on purpose: a developer who
+// puts a key in .env is making the most explicit choice, and surprises from a
+// stale `export GEMINI_API_KEY=...` somewhere in ~/.zshrc caused real debugging
+// pain. Comment a key out (or leave it blank) in .env to fall back to the
+// shell's value.
+function loadDotEnv() {
+  try {
+    const content = readFileSync(resolve(ROOT, '.env'), 'utf-8');
+    for (const raw of content.split('\n')) {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eq = line.indexOf('=');
+      if (eq < 0) continue;
+      const key = line.slice(0, eq).trim();
+      let value = line.slice(eq + 1).trim();
+      const quoted =
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"));
+      if (quoted) {
+        value = value.slice(1, -1);
+      } else {
+        // Strip inline "  # comment" (only when not inside quotes).
+        const hash = value.search(/\s+#/);
+        if (hash >= 0) value = value.slice(0, hash).trimEnd();
+      }
+      if (value === '') continue; // empty placeholder — keep any shell value
+      process.env[key] = value;
+    }
+  } catch {
+    // No .env file — fall back to exported env vars only.
+  }
+}
+loadDotEnv();
 
-if (!API_KEY) {
-  console.error('Missing GEMINI_API_KEY. Export it before running: export GEMINI_API_KEY=...');
+// --- Provider selection -----------------------------------------------------
+// Default to ElevenLabs because it doesn't have Gemini free tier's daily 10-req
+// cap. Set TTS_PROVIDER=gemini to use Gemini instead.
+type Provider = 'elevenlabs' | 'gemini';
+const PROVIDER = (process.env.TTS_PROVIDER as Provider) || 'elevenlabs';
+
+// ElevenLabs config
+// Voice IDs from ElevenLabs preset library:
+//   Bella  EXAVITQu4vr4xnSDxMaL  young female, warm — default for this app
+//   Rachel 21m00Tcm4TlvDq8ikWAM  calm female
+//   Elli   MF3mGyEYCl7XYWbV9V6O  young female, soft
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
+const ELEVENLABS_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+
+// Gemini config
+const GEMINI_MODEL = 'gemini-2.5-flash-preview-tts';
+const GEMINI_VOICE = 'Kore';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+console.log(`Using Gemini voice: ${GEMINI_VOICE} - key = ${GEMINI_API_KEY ? '✓' : 'missing'}`);
+// Rate limiting (overridable per provider).
+//   ElevenLabs free tier: ~2 concurrent — 20 RPM is safe and quick.
+//   Gemini free tier:     3 RPM and 10 requests / day (use paid for full runs).
+const DEFAULT_RPM = PROVIDER === 'gemini' ? 3 : 20;
+const RPM = Number(process.env.TTS_RPM ?? process.env.GEMINI_TTS_RPM ?? DEFAULT_RPM);
+const MIN_INTERVAL_MS = Math.ceil(60_000 / RPM) + 500;
+const MAX_RETRIES = 5;
+
+// Set TTS_LIMIT=N to only generate the first N phrases (handy for smoke tests).
+const LIMIT = process.env.TTS_LIMIT
+  ? Number(process.env.TTS_LIMIT)
+  : process.env.GEMINI_TTS_LIMIT
+  ? Number(process.env.GEMINI_TTS_LIMIT)
+  : Infinity;
+
+if (PROVIDER === 'elevenlabs' && !ELEVENLABS_API_KEY) {
+  console.error('Missing ELEVENLABS_API_KEY. Export it: export ELEVENLABS_API_KEY=...');
   process.exit(1);
 }
-
-if (!ffmpegPath) {
+if (PROVIDER === 'gemini' && !GEMINI_API_KEY) {
+  console.error('Missing GEMINI_API_KEY. Export it: export GEMINI_API_KEY=...');
+  process.exit(1);
+}
+if (PROVIDER === 'gemini' && !ffmpegPath) {
   console.error('ffmpeg-static did not provide a binary path.');
   process.exit(1);
 }
@@ -108,38 +171,13 @@ function parseRetryDelay(errBody: string): number | null {
   return m ? Math.ceil(parseFloat(m[1]) * 1000) : null;
 }
 
-async function fetchPcm(text: string, styleKey: Phrase['style']): Promise<Buffer> {
-  const prompt = `${STYLE[styleKey]} ${text}`;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-  const body = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: {
-      responseModalities: ['AUDIO'],
-      speechConfig: {
-        voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } },
-      },
-    },
-  };
-
+async function withRetry(
+  call: () => Promise<Response>,
+  describe: string,
+): Promise<Response> {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': API_KEY!,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (res.ok) {
-      const json = (await res.json()) as {
-        candidates?: { content?: { parts?: { inlineData?: { data?: string } }[] } }[];
-      };
-      const b64 = json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!b64) throw new Error(`No audio data in response: ${JSON.stringify(json).slice(0, 400)}`);
-      return Buffer.from(b64, 'base64');
-    }
-
+    const res = await call();
+    if (res.ok) return res;
     const txt = await res.text();
     if (res.status === 429 && attempt < MAX_RETRIES) {
       const delay = parseRetryDelay(txt) ?? MIN_INTERVAL_MS;
@@ -147,9 +185,78 @@ async function fetchPcm(text: string, styleKey: Phrase['style']): Promise<Buffer
       await sleep(delay + 500);
       continue;
     }
-    throw new Error(`TTS request failed (${res.status}) after attempt ${attempt}: ${txt}`);
+    throw new Error(`${describe} failed (${res.status}) after attempt ${attempt}: ${txt}`);
   }
   throw new Error('Unreachable');
+}
+
+async function fetchGeminiPcm(text: string, styleKey: Phrase['style']): Promise<Buffer> {
+  const prompt = `${STYLE[styleKey]} ${text}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseModalities: ['AUDIO'],
+      speechConfig: {
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: GEMINI_VOICE } },
+      },
+    },
+  };
+  const res = await withRetry(
+    () =>
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY!,
+        },
+        body: JSON.stringify(body),
+      }),
+    'Gemini TTS request',
+  );
+  const json = (await res.json()) as {
+    candidates?: { content?: { parts?: { inlineData?: { data?: string } }[] } }[];
+  };
+  const b64 = json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  if (!b64) throw new Error(`No audio in response: ${JSON.stringify(json).slice(0, 400)}`);
+  return Buffer.from(b64, 'base64');
+}
+
+// ElevenLabs voice_settings tuned for child-friendly narration:
+//   stability 0.5 keeps a consistent delivery without being monotonous
+//   similarity_boost 0.75 holds the preset voice's character
+//   style 0.3 adds a touch of expressiveness for cheers/encouragement
+const ELEVENLABS_VOICE_SETTINGS = {
+  stability: 0.5,
+  similarity_boost: 0.75,
+  style: 0.3,
+  use_speaker_boost: true,
+};
+
+async function fetchElevenLabsMp3(text: string): Promise<Buffer> {
+  // We send the raw phrase; the Bella/Rachel presets already sound warm for
+  // a child audience, so no style-prefix prompting is necessary.
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`;
+  const body = {
+    text,
+    model_id: ELEVENLABS_MODEL,
+    voice_settings: ELEVENLABS_VOICE_SETTINGS,
+  };
+  const res = await withRetry(
+    () =>
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': ELEVENLABS_API_KEY!,
+          accept: 'audio/mpeg',
+        },
+        body: JSON.stringify(body),
+      }),
+    'ElevenLabs TTS request',
+  );
+  const ab = await res.arrayBuffer();
+  return Buffer.from(ab);
 }
 
 function pcmToMp3(pcm: Buffer, outPath: string): Promise<void> {
@@ -252,9 +359,15 @@ async function main() {
 
     process.stdout.write(`[${i}/${phrases.length}] ${text} … `);
     try {
-      const pcm = await fetchPcm(text, style);
-      lastCallAt = Date.now();
-      await pcmToMp3(pcm, outPath);
+      if (PROVIDER === 'elevenlabs') {
+        const mp3 = await fetchElevenLabsMp3(text);
+        lastCallAt = Date.now();
+        await writeFile(outPath, mp3);
+      } else {
+        const pcm = await fetchGeminiPcm(text, style);
+        lastCallAt = Date.now();
+        await pcmToMp3(pcm, outPath);
+      }
       manifest[text] = relPath;
       // Persist manifest after each success so interrupted runs resume cleanly.
       await writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n');
