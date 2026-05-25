@@ -54,10 +54,11 @@ const PROVIDER = (process.env.TTS_PROVIDER as Provider) || 'elevenlabs';
 
 // ElevenLabs config
 // Voice IDs from ElevenLabs preset library:
-//   Bella  EXAVITQu4vr4xnSDxMaL  young female, warm — default for this app
-//   Rachel 21m00Tcm4TlvDq8ikWAM  calm female
-//   Elli   MF3mGyEYCl7XYWbV9V6O  young female, soft
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
+//   Jessica LEnmbrrxYsUYS7vsRRwD  young female, expressive — default for this app
+//   Bella   EXAVITQu4vr4xnSDxMaL  young female, warm
+//   Rachel  21m00Tcm4TlvDq8ikWAM  calm female
+//   Elli    MF3mGyEYCl7XYWbV9V6O  young female, soft
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'LEnmbrrxYsUYS7vsRRwD';
 const ELEVENLABS_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 
