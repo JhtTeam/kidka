@@ -1,0 +1,118 @@
+import { Howl } from 'howler';
+
+// Tiny base64-encoded WAV chunks for UI sounds.
+// These keep the bundle self-contained — no external audio files needed.
+// Each is a short blip generated programmatically.
+
+const dataUri = (b64: string) => `data:audio/wav;base64,${b64}`;
+
+// Pre-generated short blips (kept tiny on purpose)
+const CLICK_WAV =
+  'UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+const SUCCESS_WAV =
+  'UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+
+let clickSound: Howl | null = null;
+let successSound: Howl | null = null;
+
+const ensureSounds = () => {
+  if (!clickSound) {
+    clickSound = new Howl({ src: [dataUri(CLICK_WAV)], volume: 0.4 });
+  }
+  if (!successSound) {
+    successSound = new Howl({ src: [dataUri(SUCCESS_WAV)], volume: 0.6 });
+  }
+};
+
+export const playClick = () => {
+  ensureSounds();
+  // Combine soft tone via Web Audio for nicer feel
+  playTone(660, 0.05, 'sine', 0.15);
+};
+
+export const playSuccess = () => {
+  ensureSounds();
+  playChord([523, 659, 784], 0.25, 'triangle', 0.2);
+};
+
+export const playFail = () => {
+  playTone(220, 0.18, 'square', 0.18);
+};
+
+// --- Web Audio synthesis utilities ---
+// We synthesize sounds on the fly so the app has no audio file dependencies.
+
+let ctx: AudioContext | null = null;
+const getCtx = (): AudioContext | null => {
+  if (typeof window === 'undefined') return null;
+  if (!ctx) {
+    const AC =
+      (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (AC) ctx = new AC();
+  }
+  return ctx;
+};
+
+const playTone = (
+  freq: number,
+  duration: number,
+  type: OscillatorType = 'sine',
+  volume = 0.2,
+) => {
+  const audio = getCtx();
+  if (!audio) return;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, audio.currentTime);
+  gain.gain.linearRampToValueAtTime(volume, audio.currentTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + duration);
+  osc.connect(gain).connect(audio.destination);
+  osc.start();
+  osc.stop(audio.currentTime + duration + 0.02);
+};
+
+const playChord = (freqs: number[], duration: number, type: OscillatorType, volume: number) => {
+  freqs.forEach((f, i) => {
+    setTimeout(() => playTone(f, duration, type, volume), i * 80);
+  });
+};
+
+/**
+ * Speak a phrase or letter using the browser's speech synthesis.
+ * Falls back silently if speech synthesis isn't available.
+ */
+export const speak = (text: string, opts: { rate?: number; pitch?: number; voice?: string } = {}) => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = opts.rate ?? 0.85;
+    u.pitch = opts.pitch ?? 1.25;
+    u.lang = 'en-US';
+    // Try to pick a friendlier voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferred =
+      voices.find((v) => /female|google.*english|samantha|karen/i.test(v.name) && v.lang.startsWith('en')) ||
+      voices.find((v) => v.lang.startsWith('en'));
+    if (preferred) u.voice = preferred;
+    window.speechSynthesis.speak(u);
+  } catch {
+    // Ignore — speech is optional
+  }
+};
+
+const ENCOURAGE = ['Great job!', 'Awesome!', 'You did it!', 'Fantastic!', 'Well done!'];
+const TRY_AGAIN = ['Try again!', 'Almost there!', 'You can do it!'];
+
+export const cheer = () => {
+  playSuccess();
+  speak(ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)]);
+};
+
+export const encourage = () => {
+  playFail();
+  speak(TRY_AGAIN[Math.floor(Math.random() * TRY_AGAIN.length)]);
+};

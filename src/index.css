@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Fredoka", "Comic Sans MS", system-ui, sans-serif;
+  --font-body: "Nunito", system-ui, sans-serif;
+
+  --color-sky-soft: #bae6fd;
+  --color-sun-warm: #fde68a;
+  --color-bubble: #fbcfe8;
+  --color-grass: #bbf7d0;
+  --color-grape: #c4b5fd;
+
+  --color-primary: #f472b6;
+  --color-primary-dark: #ec4899;
+  --color-accent: #facc15;
+  --color-accent-dark: #eab308;
+
+  --shadow-cute: 0 10px 25px -5px rgb(244 114 182 / 0.35), 0 8px 10px -6px rgb(244 114 182 / 0.15);
+  --shadow-pop: 0 18px 40px -10px rgb(99 102 241 / 0.45);
+
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-wobble: wobble 1.6s ease-in-out infinite;
+  --animate-pop-in: popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-twinkle: twinkle 2.5s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes wobble {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+:root {
+  font-family: "Fredoka", "Nunito", "Comic Sans MS", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: #fff7ed;
+  color: #1f2937;
+  overscroll-behavior: none;
+}
+
+.dark body {
+  background-color: #1e1b4b;
+  color: #f9fafb;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+button:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.trace-canvas {
+  touch-action: none;
+  -ms-touch-action: none;
+}
+
+.scroll-hidden::-webkit-scrollbar { display: none; }
+.scroll-hidden { scrollbar-width: none; }
