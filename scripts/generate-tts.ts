@@ -226,21 +226,36 @@ async function fetchGeminiPcm(text: string, styleKey: Phrase['style']): Promise<
 //   stability 0.5 keeps a consistent delivery without being monotonous
 //   similarity_boost 0.75 holds the preset voice's character
 //   style 0.3 adds a touch of expressiveness for cheers/encouragement
-const ELEVENLABS_VOICE_SETTINGS = {
-  stability: 0.5,
-  similarity_boost: 0.75,
-  style: 0.3,
-  use_speaker_boost: true,
+//   speed varies per phrase style — slower for teaching, normal for cheers.
+//   ElevenLabs accepts speed in the range 0.7–1.2 (default 1.0).
+const ELEVENLABS_SPEED_BY_STYLE: Record<Phrase['style'], number> = {
+  letter: 0.7,    // single letter — read very slowly and clearly
+  word: 0.75,      // single word — slow enough for a child to repeat
+  learn: 0.7,      // "A. Apple." — slow with the natural pause in between
+  trace: 0.75,    // gentle guidance while tracing
+  story: 0.8,      // short story narration — slightly slower than normal
+  cheer: 0.95,      // cheers stay lively
+  encourage: 0.85, // encouraging lines — calm but not draggy
 };
 
-async function fetchElevenLabsMp3(text: string): Promise<Buffer> {
+function elevenLabsVoiceSettings(style: Phrase['style']) {
+  return {
+    stability: 0.5,
+    similarity_boost: 0.75,
+    style: 0.3,
+    use_speaker_boost: true,
+    speed: ELEVENLABS_SPEED_BY_STYLE[style],
+  };
+}
+
+async function fetchElevenLabsMp3(text: string, style: Phrase['style']): Promise<Buffer> {
   // We send the raw phrase; the Bella/Rachel presets already sound warm for
   // a child audience, so no style-prefix prompting is necessary.
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`;
   const body = {
     text,
     model_id: ELEVENLABS_MODEL,
-    voice_settings: ELEVENLABS_VOICE_SETTINGS,
+    voice_settings: elevenLabsVoiceSettings(style),
   };
   const res = await withRetry(
     () =>
@@ -360,7 +375,7 @@ async function main() {
     process.stdout.write(`[${i}/${phrases.length}] ${text} … `);
     try {
       if (PROVIDER === 'elevenlabs') {
-        const mp3 = await fetchElevenLabsMp3(text);
+        const mp3 = await fetchElevenLabsMp3(text, style);
         lastCallAt = Date.now();
         await writeFile(outPath, mp3);
       } else {
