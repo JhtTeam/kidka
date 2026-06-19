@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ffmpegPath from 'ffmpeg-static';
 import { ALPHABET } from '../src/data/alphabet';
+import { WORD_TOPICS } from '../src/data/words';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -82,6 +83,16 @@ const LIMIT = process.env.TTS_LIMIT
   ? Number(process.env.GEMINI_TTS_LIMIT)
   : Infinity;
 
+// Set TTS_ONLY to restrict generation to one or more phrase groups, e.g.
+//   TTS_ONLY=review   -> only the vocabulary word + sentence clips
+//   TTS_ONLY=review,ui
+// Groups: 'ui' | 'alphabet' | 'review'. Generation is filtered, but the manifest
+// prune at the end still uses the FULL phrase list, so untouched groups (e.g. the
+// alphabet audio) are never dropped from the manifest.
+const ONLY = process.env.TTS_ONLY
+  ? process.env.TTS_ONLY.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+  : null;
+
 if (PROVIDER === 'elevenlabs' && !ELEVENLABS_API_KEY) {
   console.error('Missing ELEVENLABS_API_KEY. Export it: export ELEVENLABS_API_KEY=...');
   process.exit(1);
@@ -110,7 +121,8 @@ const STYLE = {
   encourage: 'Say warmly and kindly, like encouraging a young child to try again:',
 };
 
-type Phrase = { text: string; style: keyof typeof STYLE; name: string };
+type Group = 'ui' | 'alphabet' | 'review';
+type Phrase = { text: string; style: keyof typeof STYLE; name: string; group: Group };
 
 const slugify = (s: string) =>
   s
@@ -124,27 +136,27 @@ const slugify = (s: string) =>
 // `name` becomes the MP3 filename — keep it short and human-readable.
 function buildPhrases(): Phrase[] {
   const phrases: Phrase[] = [];
-  const add = (text: string, style: Phrase['style'], name: string) =>
-    phrases.push({ text, style, name });
+  const add = (text: string, style: Phrase['style'], name: string, group: Group) =>
+    phrases.push({ text, style, name, group });
 
   // Static UI lines
-  add("Let's go!", 'cheer', 'lets-go');
+  add("Let's go!", 'cheer', 'lets-go', 'ui');
 
   // Cheer + encourage lines (must match ENCOURAGE/TRY_AGAIN in audio.ts)
   ['Great job!', 'Awesome!', 'You did it!', 'Fantastic!', 'Well done!'].forEach((t) =>
-    add(t, 'cheer', `cheer-${slugify(t)}`),
+    add(t, 'cheer', `cheer-${slugify(t)}`, 'ui'),
   );
   ['Try again!', 'Almost there!', 'You can do it!'].forEach((t) =>
-    add(t, 'encourage', `encourage-${slugify(t)}`),
+    add(t, 'encourage', `encourage-${slugify(t)}`, 'ui'),
   );
 
   // Per-letter lines
   for (const entry of ALPHABET) {
     const L = entry.letter; // single uppercase letter, safe in filenames
-    add(entry.letter, 'letter', `letter-${L}`);
-    add(entry.word, 'word', `word-${L}`);
-    add(`${entry.letter}. ${entry.word}.`, 'learn', `learn-${L}`);
-    add(`Trace the letter ${entry.letter}`, 'trace', `trace-${L}`);
+    add(entry.letter, 'letter', `letter-${L}`, 'alphabet');
+    add(entry.word, 'word', `word-${L}`, 'alphabet');
+    add(`${entry.letter}. ${entry.word}.`, 'learn', `learn-${L}`, 'alphabet');
+    add(`Trace the letter ${entry.letter}`, 'trace', `trace-${L}`, 'alphabet');
 
     // Story script: matches the template in src/pages/Story.tsx
     const intros = [
@@ -157,8 +169,19 @@ function buildPhrases(): Phrase[] {
         `${intro} ${entry.letter} is for ${entry.word}. ${entry.hint}.`,
         'story',
         `story-${L}-${i + 1}`,
+        'alphabet',
       );
     });
+  }
+
+  // Review vocabulary lines — one spoken word + one example sentence per word.
+  // Keep these texts in sync with the speak() call sites in src/pages/Review.tsx.
+  for (const topic of WORD_TOPICS) {
+    for (const w of topic.words) {
+      const slug = slugify(w.word);
+      add(w.display, 'word', `word-${slug}`, 'review');
+      add(w.sentence, 'story', `sentence-${slug}`, 'review');
+    }
   }
 
   return phrases;
@@ -339,7 +362,12 @@ async function migrateExistingNames(
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
-  const phrases = buildPhrases().slice(0, LIMIT);
+  let phrases = buildPhrases();
+  if (ONLY) {
+    phrases = phrases.filter((p) => ONLY.includes(p.group));
+    console.log(`TTS_ONLY=${ONLY.join(',')} → generating ${phrases.length} phrase(s) from group(s) [${ONLY.join(', ')}]`);
+  }
+  phrases = phrases.slice(0, LIMIT);
   let existing = await loadExistingManifest();
   existing = await migrateExistingNames(phrases, existing);
   const manifest: Record<string, string> = { ...existing };

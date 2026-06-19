@@ -6,6 +6,7 @@ import { Practice } from './pages/Practice';
 import { Games } from './pages/Games';
 import { ProgressPage } from './pages/Progress';
 import { Story } from './pages/Story';
+import { Review } from './pages/Review';
 
 const router = createBrowserRouter([
   {
@@ -20,6 +21,8 @@ const router = createBrowserRouter([
       { path: 'games', element: <Games /> },
       { path: 'progress', element: <ProgressPage /> },
       { path: 'story', element: <Story /> },
+      { path: 'review', element: <Review /> },
+      { path: 'review/:topicId', element: <Review /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

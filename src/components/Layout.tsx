@@ -10,6 +10,7 @@ const NAV = [
   { to: '/learn', label: 'Learn', emoji: '🔤' },
   { to: '/practice', label: 'Trace', emoji: '✏️' },
   { to: '/games', label: 'Games', emoji: '🎮' },
+  { to: '/review', label: 'Review', emoji: '🔁' },
   { to: '/progress', label: 'Stars', emoji: '⭐' },
 ];
 
