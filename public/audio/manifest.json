@@ -82,5 +82,6 @@
   "The librarian takes care of the books.": "audio/sentence-librarian.mp3",
   "Library": "audio/word-library.mp3",
   "We read books in the library.": "audio/sentence-library.mp3",
-  "Clock": "audio/word-clock.mp3"
+  "Clock": "audio/word-clock.mp3",
+  "The clock tells us the time.": "audio/sentence-clock.mp3"
 }
