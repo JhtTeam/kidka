@@ -112,10 +112,13 @@ if (typeof window !== 'undefined') {
   void loadManifest();
 }
 
-const playFromManifest = (text: string): boolean => {
-  if (!manifest) return false;
+// Start playing the pre-generated clip for `text` and return its Howl, or null
+// when there's no clip for the phrase. Callers can listen for the Howl's 'end'
+// event to chain another phrase after this one finishes.
+const playHowl = (text: string): Howl | null => {
+  if (!manifest) return null;
   const file = manifest[text];
-  if (!file) return false;
+  if (!file) return null;
   const url = `${import.meta.env.BASE_URL}${file}`;
   let howl = howlCache.get(url);
   if (!howl) {
@@ -127,11 +130,20 @@ const playFromManifest = (text: string): boolean => {
   howl.stop();
   howl.play();
   currentHowl = howl;
-  return true;
+  return howl;
 };
 
-const speakViaBrowser = (text: string, opts: { rate?: number; pitch?: number }) => {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+const playFromManifest = (text: string): boolean => playHowl(text) !== null;
+
+const speakViaBrowser = (
+  text: string,
+  opts: { rate?: number; pitch?: number },
+  onEnd?: () => void,
+) => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    onEnd?.();
+    return;
+  }
   try {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
@@ -143,11 +155,32 @@ const speakViaBrowser = (text: string, opts: { rate?: number; pitch?: number }) 
       voices.find((v) => /female|google.*english|samantha|karen/i.test(v.name) && v.lang.startsWith('en')) ||
       voices.find((v) => v.lang.startsWith('en'));
     if (preferred) u.voice = preferred;
+    if (onEnd) {
+      u.onend = () => onEnd();
+      u.onerror = () => onEnd();
+    }
     window.speechSynthesis.speak(u);
   } catch {
     // Ignore — speech is optional
+    onEnd?.();
   }
 };
+
+// Play one phrase and resolve only when it finishes (or fails). Lets callers
+// chain phrases without guessing a timeout that would clip longer clips.
+const playOne = (text: string, opts: { rate?: number; pitch?: number } = {}): Promise<void> =>
+  new Promise((resolve) => {
+    const howl = playHowl(text);
+    if (howl) {
+      const done = () => resolve();
+      howl.once('end', done);
+      howl.once('stop', done);
+      howl.once('loaderror', done);
+      howl.once('playerror', done);
+      return;
+    }
+    speakViaBrowser(text, opts, resolve);
+  });
 
 /**
  * Speak a phrase or letter. Prefers a pre-generated Gemini TTS clip when
@@ -165,6 +198,36 @@ export const speak = (text: string, opts: { rate?: number; pitch?: number; voice
     return;
   }
   speakViaBrowser(text, opts);
+};
+
+/**
+ * Speak several phrases back-to-back, each starting only after the previous one
+ * actually finishes (plus a short gap). This prevents a longer word clip (e.g.
+ * "Librarian") from being cut off by the example sentence that follows — which
+ * happens with fixed setTimeout gaps. Returns a cancel function for cleanup
+ * (e.g. when a flashcard unmounts before the sequence completes).
+ */
+export const speakSequence = (
+  texts: string[],
+  opts: { gapMs?: number; rate?: number; pitch?: number } = {},
+): (() => void) => {
+  const gap = opts.gapMs ?? 350;
+  let cancelled = false;
+  void loadManifest().then(async () => {
+    for (const text of texts) {
+      if (cancelled) return;
+      await playOne(text, opts);
+      if (cancelled) return;
+      if (gap) await new Promise((r) => setTimeout(r, gap));
+    }
+  });
+  return () => {
+    cancelled = true;
+    if (currentHowl) currentHowl.stop();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  };
 };
 
 const ENCOURAGE = ['Great job!', 'Awesome!', 'You did it!', 'Fantastic!', 'Well done!'];

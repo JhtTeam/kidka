@@ -7,7 +7,7 @@ import { BigButton } from '../components/BigButton';
 import { Mascot } from '../components/Mascot';
 import { PageTitle } from '../components/PageTitle';
 import { Confetti } from '../components/Confetti';
-import { cheer, encourage, speak } from '../utils/audio';
+import { cheer, encourage, speak, speakSequence } from '../utils/audio';
 import { useProgress } from '../hooks/useProgress';
 
 // Show the real picture when it exists, otherwise fall back to the emoji.
@@ -112,20 +112,21 @@ function Flashcards({ topic, onPlayQuiz, onBack }: { topic: WordTopic; onPlayQui
   const entry = topic.words[index];
   const isLast = index === topic.words.length - 1;
 
-  // Speak the word, then the sentence, whenever a new card appears.
+  // Speak the word, then the sentence, whenever a new card appears. The
+  // sentence only starts after the word clip finishes, so longer words like
+  // "Librarian" are never cut off.
   useEffect(() => {
-    const t = setTimeout(() => speak(entry.display), 350);
-    const t2 = setTimeout(() => speak(entry.sentence), 1400);
+    let cancel: (() => void) | undefined;
+    const t = setTimeout(() => {
+      cancel = speakSequence([entry.display, entry.sentence]);
+    }, 350);
     return () => {
       clearTimeout(t);
-      clearTimeout(t2);
+      cancel?.();
     };
   }, [entry]);
 
-  const sayAgain = () => {
-    speak(entry.display);
-    setTimeout(() => speak(entry.sentence), 1050);
-  };
+  const sayAgain = () => speakSequence([entry.display, entry.sentence]);
 
   return (
     <div className="flex flex-col items-center gap-6">
