@@ -74,5 +74,13 @@
   "J": "audio/letter-J.mp3",
   "Jellyfish": "audio/word-J.mp3",
   "J. Jellyfish.": "audio/learn-J.mp3",
-  "Teacher": "audio/word-teacher.mp3"
+  "Teacher": "audio/word-teacher.mp3",
+  "My teacher helps me learn.": "audio/sentence-teacher.mp3",
+  "Bell": "audio/word-bell.mp3",
+  "The bell goes ding, ding!": "audio/sentence-bell.mp3",
+  "Librarian": "audio/word-librarian.mp3",
+  "The librarian takes care of the books.": "audio/sentence-librarian.mp3",
+  "Library": "audio/word-library.mp3",
+  "We read books in the library.": "audio/sentence-library.mp3",
+  "Clock": "audio/word-clock.mp3"
 }

@@ -226,24 +226,37 @@ async function fetchGeminiPcm(text: string, styleKey: Phrase['style']): Promise<
       },
     },
   };
-  const res = await withRetry(
-    () =>
-      fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': GEMINI_API_KEY!,
-        },
-        body: JSON.stringify(body),
-      }),
-    'Gemini TTS request',
-  );
-  const json = (await res.json()) as {
-    candidates?: { content?: { parts?: { inlineData?: { data?: string } }[] } }[];
-  };
-  const b64 = json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!b64) throw new Error(`No audio in response: ${JSON.stringify(json).slice(0, 400)}`);
-  return Buffer.from(b64, 'base64');
+
+  // Gemini TTS intermittently returns 200 OK with finishReason "OTHER" and no
+  // audio — most often on short single words. It's transient, so retry the
+  // whole request a few times before giving up.
+  let lastJson = '';
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const res = await withRetry(
+      () =>
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': GEMINI_API_KEY!,
+          },
+          body: JSON.stringify(body),
+        }),
+      'Gemini TTS request',
+    );
+    const json = (await res.json()) as {
+      candidates?: { content?: { parts?: { inlineData?: { data?: string } }[] } }[];
+    };
+    const b64 = json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (b64) return Buffer.from(b64, 'base64');
+
+    lastJson = JSON.stringify(json).slice(0, 400);
+    if (attempt < MAX_RETRIES) {
+      process.stdout.write(`empty audio, retry ${attempt}/${MAX_RETRIES - 1} … `);
+      await sleep(MIN_INTERVAL_MS);
+    }
+  }
+  throw new Error(`No audio in response after ${MAX_RETRIES} attempts: ${lastJson}`);
 }
 
 // ElevenLabs voice_settings tuned for child-friendly narration:
@@ -378,6 +391,7 @@ async function main() {
   );
   let i = 0;
   let lastCallAt = 0;
+  const failures: string[] = [];
   for (const { text, style, name } of phrases) {
     i++;
     const file = `${name}.mp3`;
@@ -418,8 +432,9 @@ async function main() {
       console.log('ok');
     } catch (err) {
       console.log('FAIL');
-      console.error(err);
-      throw err;
+      console.error(err instanceof Error ? err.message : err);
+      failures.push(text);
+      // Keep going so one stubborn phrase doesn't block the rest of the run.
     }
   }
 
@@ -434,6 +449,11 @@ async function main() {
     await writeFile(MANIFEST_PATH, JSON.stringify(finalManifest, null, 2) + '\n');
   }
   console.log(`\nWrote manifest → ${MANIFEST_PATH}`);
+  if (failures.length) {
+    console.log(`\n${failures.length} phrase(s) failed — re-run to retry:`);
+    for (const t of failures) console.log(`  - ${t}`);
+    process.exitCode = 1;
+  }
 }
 
 main().catch((err) => {
