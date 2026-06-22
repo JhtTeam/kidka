@@ -61,5 +61,16 @@
   "Clock": "audio/word-clock.mp3",
   "The clock tells us the time.": "audio/sentence-clock.mp3",
   "Desk": "audio/word-desk.mp3",
-  "I write at my desk.": "audio/sentence-desk.mp3"
+  "I write at my desk.": "audio/sentence-desk.mp3",
+  "G": "audio/letter-G.mp3",
+  "Giraffe": "audio/word-G.mp3",
+  "G. Giraffe.": "audio/learn-G.mp3",
+  "Trace the letter G": "audio/trace-G.mp3",
+  "Today we will learn the letter G! G is for Giraffe. G looks like a curly tail.": "audio/story-G-1.mp3",
+  "Here comes the letter G! G is for Giraffe. G looks like a curly tail.": "audio/story-G-2.mp3",
+  "Look! It's the letter G. G is for Giraffe. G looks like a curly tail.": "audio/story-G-3.mp3",
+  "H": "audio/letter-H.mp3",
+  "House": "audio/word-H.mp3",
+  "H. House.": "audio/learn-H.mp3",
+  "Trace the letter H": "audio/trace-H.mp3"
 }
