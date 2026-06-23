@@ -82,5 +82,17 @@
   "Jump": "audio/word-jump.mp3",
   "I jump up very high.": "audio/sentence-jump.mp3",
   "Run": "audio/word-run.mp3",
-  "I run very fast.": "audio/sentence-run.mp3"
+  "I run very fast.": "audio/sentence-run.mp3",
+  "Duck": "audio/word-duck.mp3",
+  "The duck says quack, quack!": "audio/sentence-duck.mp3",
+  "The egg is white and round.": "audio/sentence-egg.mp3",
+  "Five": "audio/word-five.mp3",
+  "I can count to five.": "audio/sentence-five.mp3",
+  "Family": "audio/word-family.mp3",
+  "I love my family very much.": "audio/sentence-family.mp3",
+  "Garden": "audio/word-garden.mp3",
+  "Flowers grow in the garden.": "audio/sentence-garden.mp3",
+  "Grab": "audio/word-grab.mp3",
+  "I grab the ball with my hands.": "audio/sentence-grab.mp3",
+  "Feed": "audio/word-feed.mp3"
 }

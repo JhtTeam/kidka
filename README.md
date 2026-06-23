@@ -44,7 +44,7 @@ npm run preview    # preview the production build
 src/
   assets/         # static assets (currently SVG icons live in /public)
   components/     # Reusable UI: BigButton, LetterCard, Mascot, Layout, ...
-  data/           # alphabet.ts — the A-Z dataset
+  data/           # alphabet.ts — the A-Z dataset; words.ts — Review vocabulary by topic
   games/          # ChooseLetter, MatchImage, Memory, Puzzle
   hooks/          # useProgress, useDarkMode
   pages/          # Home, Learn, Practice, Games, Progress, Story
@@ -128,11 +128,28 @@ Heads-up: free tier caps at **10 requests per day** + 3 RPM for
 (`TTS_PROVIDER=gemini TTS_RPM=60 npm run generate-audio` ≈ 4 minutes) or many
 days of drip-feeding on free tier.
 
+**Generate only one group**
+
+Phrases are split into three groups — `ui`, `alphabet` and `review` (the
+vocabulary words + sentences from [src/data/words.ts](src/data/words.ts)). After
+adding or editing review words, regenerate just that group instead of the whole
+pack:
+
+```bash
+TTS_ONLY=review npm run generate-audio          # only the vocabulary clips
+TTS_ONLY=review,ui npm run generate-audio       # comma-separate several groups
+```
+
+Cached phrases are still skipped, so this only spends quota on the new words.
+The manifest prune at the end uses the *full* phrase list, so untouched groups
+(e.g. the alphabet audio) are never dropped.
+
 **Useful env vars**
 
 | Var | Purpose |
 | --- | --- |
 | `TTS_PROVIDER` | `elevenlabs` (default) or `gemini` |
+| `TTS_ONLY` | Restrict generation to one or more groups: `ui`, `alphabet`, `review` (comma-separated) |
 | `TTS_RPM` | Override rate limit (default 20 for ElevenLabs, 3 for Gemini) |
 | `TTS_LIMIT` | Generate only the first N phrases — handy for smoke tests |
 | `ELEVENLABS_VOICE_ID` | Override the default Bella voice |
