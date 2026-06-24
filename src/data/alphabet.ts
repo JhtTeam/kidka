@@ -12,7 +12,7 @@ export const ALPHABET: AlphabetEntry[] = [
   { letter: 'F', lower: 'f', word: 'Flag',      emoji: '🚩', hint: 'F looks like a flag',            shapeHint: 'flag',       color: '#14b8a6', bgGradient: 'from-teal-200 via-cyan-200 to-sky-200' },
   { letter: 'G', lower: 'g', word: 'Giraffe',   emoji: '🦒', hint: 'G looks like a curly tail',      shapeHint: 'curl',       color: '#06b6d4', bgGradient: 'from-cyan-200 via-sky-200 to-blue-200' },
   { letter: 'H', lower: 'h', word: 'House',     emoji: '🏠', hint: 'H looks like a ladder',          shapeHint: 'ladder',     color: '#0ea5e9', bgGradient: 'from-sky-200 via-blue-200 to-indigo-200' },
-  { letter: 'I', lower: 'i', word: 'Ice cream', emoji: '🍦', hint: 'I looks like a pencil',          shapeHint: 'pencil',     color: '#3b82f6', bgGradient: 'from-blue-200 via-indigo-200 to-violet-200' },
+  { letter: 'I', lower: 'i', word: 'Iguana',    emoji: '🦎', hint: 'I looks like a pencil',          shapeHint: 'pencil',     color: '#3b82f6', bgGradient: 'from-blue-200 via-indigo-200 to-violet-200' },
   // --- TEMP: letters below are not fully voiced yet. Uncomment in batches and
   //     run `npm run generate-audio` to generate their audio, a few at a time. ---
   
