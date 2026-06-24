@@ -94,5 +94,12 @@
   "Flowers grow in the garden.": "audio/sentence-garden.mp3",
   "Grab": "audio/word-grab.mp3",
   "I grab the ball with my hands.": "audio/sentence-grab.mp3",
-  "Feed": "audio/word-feed.mp3"
+  "Feed": "audio/word-feed.mp3",
+  "I feed my pet every day.": "audio/sentence-feed.mp3",
+  "Hen": "audio/word-hen.mp3",
+  "The hen lays an egg.": "audio/sentence-hen.mp3",
+  "Iguana": "audio/word-iguana.mp3",
+  "The iguana is a big green lizard.": "audio/sentence-iguana.mp3",
+  "Insects": "audio/word-insects.mp3",
+  "Insects have six little legs.": "audio/sentence-insects.mp3"
 }
