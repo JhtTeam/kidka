@@ -16,9 +16,9 @@ export const ALPHABET: AlphabetEntry[] = [
   // --- TEMP: letters below are not fully voiced yet. Uncomment in batches and
   //     run `npm run generate-audio` to generate their audio, a few at a time. ---
   
-  // { letter: 'J', lower: 'j', word: 'Jellyfish', emoji: '🪼', hint: 'J looks like a fish hook',       shapeHint: 'hook',       color: '#6366f1', bgGradient: 'from-indigo-200 via-violet-200 to-purple-200' },
-  // { letter: 'K', lower: 'k', word: 'Kite',      emoji: '🪁', hint: 'K looks like a karate kick',     shapeHint: 'kick',       color: '#8b5cf6', bgGradient: 'from-violet-200 via-purple-200 to-fuchsia-200' },
-  // { letter: 'L', lower: 'l', word: 'Lion',      emoji: '🦁', hint: 'L looks like a corner',          shapeHint: 'corner',     color: '#a855f7', bgGradient: 'from-purple-200 via-fuchsia-200 to-pink-200' },
+  { letter: 'J', lower: 'j', word: 'Jellyfish', emoji: '🪼', hint: 'J looks like a fish hook',       shapeHint: 'hook',       color: '#6366f1', bgGradient: 'from-indigo-200 via-violet-200 to-purple-200' },
+  { letter: 'K', lower: 'k', word: 'Kite',      emoji: '🪁', hint: 'K looks like a karate kick',     shapeHint: 'kick',       color: '#8b5cf6', bgGradient: 'from-violet-200 via-purple-200 to-fuchsia-200' },
+  { letter: 'L', lower: 'l', word: 'Lion',      emoji: '🦁', hint: 'L looks like a corner',          shapeHint: 'corner',     color: '#a855f7', bgGradient: 'from-purple-200 via-fuchsia-200 to-pink-200' },
   // { letter: 'M', lower: 'm', word: 'Moon',      emoji: '🌙', hint: 'M looks like two mountains',     shapeHint: 'mountains',  color: '#d946ef', bgGradient: 'from-fuchsia-200 via-pink-200 to-rose-200' },
   // { letter: 'N', lower: 'n', word: 'Nest',      emoji: '🪺', hint: 'N looks like a zigzag',          shapeHint: 'zigzag',     color: '#ec4899', bgGradient: 'from-pink-200 via-rose-200 to-red-200' },
   // { letter: 'O', lower: 'o', word: 'Orange',    emoji: '🍊', hint: 'O looks like a ball',            shapeHint: 'ball',       color: '#f43f5e', bgGradient: 'from-rose-200 via-red-200 to-orange-200' },

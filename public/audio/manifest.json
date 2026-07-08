@@ -37,7 +37,7 @@
   "Here comes the letter D! D is for Door. D looks like a door.": "audio/story-D-2.mp3",
   "Look! It's the letter D. D is for Door. D looks like a door.": "audio/story-D-3.mp3",
   "E": "audio/letter-E.mp3",
-  "Egg": "audio/word-egg.mp3",
+  "Egg": "audio/word-E.mp3",
   "E. Egg.": "audio/learn-E.mp3",
   "Trace the letter E": "audio/trace-E.mp3",
   "Today we will learn the letter E! E is for Egg. E looks like a comb.": "audio/story-E-1.mp3",
@@ -61,7 +61,7 @@
   "House": "audio/word-H.mp3",
   "H. House.": "audio/learn-H.mp3",
   "Trace the letter H": "audio/trace-H.mp3",
-  "Iguana": "audio/word-iguana.mp3",
+  "Iguana": "audio/word-I.mp3",
   "Teacher": "audio/word-teacher.mp3",
   "My teacher helps me learn.": "audio/sentence-teacher.mp3",
   "Bell": "audio/word-bell.mp3",
@@ -101,5 +101,13 @@
   "The hen lays an egg.": "audio/sentence-hen.mp3",
   "The iguana is a big green lizard.": "audio/sentence-iguana.mp3",
   "Insects": "audio/word-insects.mp3",
-  "Insects have six little legs.": "audio/sentence-insects.mp3"
+  "Insects have six little legs.": "audio/sentence-insects.mp3",
+  "Today we will learn the letter H! H is for House. H looks like a ladder.": "audio/story-H-1.mp3",
+  "Here comes the letter H! H is for House. H looks like a ladder.": "audio/story-H-2.mp3",
+  "Look! It's the letter H. H is for House. H looks like a ladder.": "audio/story-H-3.mp3",
+  "I": "audio/letter-I.mp3",
+  "I. Iguana.": "audio/learn-I.mp3",
+  "Trace the letter I": "audio/trace-I.mp3",
+  "Today we will learn the letter I! I is for Iguana. I looks like a pencil.": "audio/story-I-1.mp3",
+  "Here comes the letter I! I is for Iguana. I looks like a pencil.": "audio/story-I-2.mp3"
 }
