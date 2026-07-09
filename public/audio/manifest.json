@@ -112,5 +112,16 @@
   "Here comes the letter I! I is for Iguana. I looks like a pencil.": "audio/story-I-2.mp3",
   "Look! It's the letter I. I is for Iguana. I looks like a pencil.": "audio/story-I-3.mp3",
   "J": "audio/letter-J.mp3",
-  "J. Jellyfish.": "audio/learn-J.mp3"
+  "J. Jellyfish.": "audio/learn-J.mp3",
+  "Jellyfish": "audio/word-J.mp3",
+  "Trace the letter J": "audio/trace-J.mp3",
+  "Today we will learn the letter J! J is for Jellyfish. J looks like a fish hook.": "audio/story-J-1.mp3",
+  "Here comes the letter J! J is for Jellyfish. J looks like a fish hook.": "audio/story-J-2.mp3",
+  "Look! It's the letter J. J is for Jellyfish. J looks like a fish hook.": "audio/story-J-3.mp3",
+  "K": "audio/letter-K.mp3",
+  "Kite": "audio/word-K.mp3",
+  "K. Kite.": "audio/learn-K.mp3",
+  "Trace the letter K": "audio/trace-K.mp3",
+  "Today we will learn the letter K! K is for Kite. K looks like a karate kick.": "audio/story-K-1.mp3",
+  "Here comes the letter K! K is for Kite. K looks like a karate kick.": "audio/story-K-2.mp3"
 }
